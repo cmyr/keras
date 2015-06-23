@@ -10,6 +10,7 @@ from . import objectives
 from . import callbacks as cbks
 from .utils.generic_utils import Progbar, printv
 from .layers import containers
+from .utils.io_utils import HDF5Matrix
 from six.moves import range
 
 def standardize_y(y):
@@ -182,7 +183,13 @@ class Model(object):
 
         for epoch in range(nb_epoch):
             callbacks.on_epoch_begin(epoch)
-            if shuffle:
+            if shuffle == 'batch':
+                batches = int(len(index_array)/batch_size)
+                index_array = index_array[:batches*batch_size]
+                index_array = index_array.reshape((batches, batch_size))
+                np.random.shuffle(index_array)
+                index_array = index_array.flatten()
+            elif shuffle:
                 np.random.shuffle(index_array)
 
             batches = make_batches(len(y), batch_size)
