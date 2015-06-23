@@ -3,16 +3,17 @@ from __future__ import absolute_import, division
 
 import theano
 import theano.tensor as T
+import numpy as np
 
 from .. import activations, initializations
-from ..utils.theano_utils import shared_zeros, floatX
+from ..utils.theano_utils import shared_zeros, floatX, shared_scalar, get_mask, default_mask_val
 from ..utils.generic_utils import make_tuple
 from .. import regularizers
 from .. import constraints
 
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 from six.moves import zip
-srng = RandomStreams()
+srng = RandomStreams(seed=np.random.randint(10e6))
 
 class Layer(object):
     def __init__(self):
@@ -142,19 +143,21 @@ class Dropout(Layer):
     '''
         Hinton's dropout.
     '''
-    def __init__(self, p):
+    def __init__(self, p, mask_val=default_mask_val):
         super(Dropout,self).__init__()
         self.p = p
+        self.mask_val = shared_scalar(mask_val)
 
     def get_output(self, train):
         X = self.get_input(train)
+        mask = get_mask(X, self.mask_val)
         if self.p > 0.:
             retain_prob = 1. - self.p
             if train:
                 X *= srng.binomial(X.shape, p=retain_prob, dtype=theano.config.floatX)
             else:
                 X *= retain_prob
-        return X
+        return mask * X + (1 - mask) * self.mask_val
 
     def get_config(self):
         return {"name":self.__class__.__name__,
@@ -165,15 +168,17 @@ class Activation(Layer):
     '''
         Apply an activation function to an output.
     '''
-    def __init__(self, activation, target=0, beta=0.1):
+    def __init__(self, activation, target=0, beta=0.1, mask_val=default_mask_val):
         super(Activation,self).__init__()
         self.activation = activations.get(activation)
         self.target = target
         self.beta = beta
+        self.mask_val = shared_scalar(mask_val)
 
     def get_output(self, train):
         X = self.get_input(train)
-        return self.activation(X)
+        mask = get_mask(X, self.mask_val)
+        return mask * self.activation(X) + (1 - mask) * self.mask_val
 
     def get_config(self):
         return {"name":self.__class__.__name__,
@@ -286,7 +291,7 @@ class TimeDistributedDense(Layer):
 
     '''
     def __init__(self, input_dim, output_dim, init='glorot_uniform', activation='linear', weights=None, 
-        W_regularizer=None, b_regularizer=None, W_constraint=None, b_constraint=None):
+        W_regularizer=None, b_regularizer=None, W_constraint=None, b_constraint=None, mask_val=default_mask_val):
 
         super(TimeDistributedDense,self).__init__()
         self.init = initializations.get(init)
@@ -302,18 +307,21 @@ class TimeDistributedDense(Layer):
 
         self.regularizers = [W_regularizer, b_regularizer]
         self.constraints = [W_constraint, b_constraint]
+        self.mask_val = shared_scalar(mask_val)
 
         if weights is not None:
             self.set_weights(weights)
 
     def get_output(self, train):
         X = self.get_input(train)
+        X = X.dimshuffle(1,0,2)
+        mask = get_mask(X, self.mask_val)
 
-        def act_func(X):
-            return self.activation(T.dot(X, self.W) + self.b)
+        def act_func(X, mask):
+            return mask * self.activation(T.dot(X, self.W) + self.b) + (1 - mask) * self.mask_val
 
         output, _ = theano.scan(fn = act_func,
-                                sequences = X.dimshuffle(1,0,2),
+                                sequences = [X, mask],
                                 outputs_info=None)
         return output.dimshuffle(1,0,2)
 
