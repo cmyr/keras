@@ -3,7 +3,7 @@ import theano
 import theano.tensor as T
 import numpy as np
 
-from .utils.theano_utils import sharedX, shared_zeros
+from .utils.theano_utils import sharedX, shared_zeros, shared_ones
 
 def get_fans(shape):
     fan_in = shape[0] if len(shape) == 2 else np.prod(shape[1:])
@@ -59,8 +59,17 @@ def orthogonal(shape, scale=1.1):
     q = q.reshape(shape)
     return sharedX(scale * q[:shape[0], :shape[1]])
 
+def identity(shape, scale=1):
+    if len(shape) != 2 or shape[0] != shape[1]:
+        raise Exception("Identity matrix initialization can only be used for 2D square matrices")
+    else:
+        return sharedX(scale * np.identity(shape[0]))
+
 def zero(shape):
     return shared_zeros(shape)
+
+def one(shape):
+    return shared_ones(shape)
 
 
 from .utils.generic_utils import get_from_module
