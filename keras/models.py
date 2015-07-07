@@ -162,7 +162,7 @@ class Model(object):
 
     def fit(self, X, y, batch_size=128, nb_epoch=100, verbose=1, callbacks=[],
             validation_split=0., validation_data=None, shuffle=True, show_accuracy=False, 
-            class_weight=None, sample_weight=None):
+            class_weight=None, sample_weight=None, debug_batches=False):
 
         X = standardize_X(X)
         y = standardize_y(y)
@@ -230,6 +230,10 @@ class Model(object):
                 y_batch = y[batch_ids]
                 weight_batch = sample_weight[batch_ids]
 
+                if debug_batches:
+                    print('data batch: (%d, %d)' % (len(X_batch), len(X_batch[0])))
+                    print('target batch: (%d, %d)' %(len(y_batch), len(y_batch[0])))
+                
                 batch_logs = {}
                 batch_logs['batch'] = batch_index
                 batch_logs['size'] = len(batch_ids)
