@@ -130,7 +130,7 @@ class Model(object):
             elif shuffle:
                 np.random.shuffle(index_array)
 
-            batches = make_batches(nb_train_sample, batch_size)
+            batches = make_batches(len(index_array), batch_size)
             for batch_index, (batch_start, batch_end) in enumerate(batches):
                 batch_ids = index_array[batch_start:batch_end]
                 ins_batch = slice_X(ins, batch_ids)
