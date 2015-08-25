@@ -447,7 +447,7 @@ class Sequential(Model, containers.Sequential):
 
     def fit(self, X, y, batch_size=128, nb_epoch=100, verbose=1, callbacks=[],
             validation_split=0., validation_data=None, shuffle=True, show_accuracy=False,
-            class_weight=None, sample_weight=None):
+            class_weight=None, sample_weight=None, weight_validation=False):
 
         X = standardize_X(X)
         y = standardize_y(y)
@@ -461,14 +461,24 @@ class Sequential(Model, containers.Sequential):
             else:
                 val_f = self._test
         if validation_data:
-            try:
-                X_val, y_val = validation_data
-            except:
-                raise Exception("Invalid format for validation data; provide a tuple (X_val, y_val). \
-                    X_val may be a numpy array or a list of numpy arrays depending on your model input.")
+            if not (len(validation) == 2 and not weight_validation or 
+                len(validation) == 3 and weight_validation):
+                raise Exception("Invalid format for validation data; provide a tuple (X_val, y_val, [weights_val]). \
+                        X_val may be a numpy array or a list of numpy arrays depending on your model input. \
+                        weights_val will be interpreted based on the class_weights and sample_weights arguments.")
+
+            X_val, y_val = validation_data[:2]
             X_val = standardize_X(X_val)
             y_val = standardize_y(y_val)
-            val_ins = X_val + [y_val, np.ones(y_val.shape[:-1] + (1,))]
+                
+            if weight_validation and class_weight:
+                weight_val = standardize_weights(y_val, class_weight=validation_data[2])
+            elif weight_validation and sample_weight:
+                weight_val = standardize_weights(y_val, sample_weight=validation_data[2])
+            else:
+                weight_val = np.ones(y_val.shape[:-1] + (1,))
+                
+            val_ins = X_val + [y_val, weight_val]
 
         if show_accuracy:
             f = self._train_with_acc
