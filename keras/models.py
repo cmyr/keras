@@ -461,8 +461,8 @@ class Sequential(Model, containers.Sequential):
             else:
                 val_f = self._test
         if validation_data:
-            if not (len(validation) == 2 and not weight_validation or 
-                len(validation) == 3 and weight_validation):
+            if not (len(validation_data) == 2 and not weight_validation or 
+                len(validation_data) == 3 and weight_validation):
                 raise Exception("Invalid format for validation data; provide a tuple (X_val, y_val, [weights_val]). \
                         X_val may be a numpy array or a list of numpy arrays depending on your model input. \
                         weights_val will be interpreted based on the class_weights and sample_weights arguments.")
