@@ -81,7 +81,7 @@ def weighted_objective(fn):
             return weighted.sum() / filtered_weights.sum()
         else:
             filtered_mask = mask[weights.nonzero()[:-1]]
-            return weighted.sum() / (filtered_mask * filtered_weights).sum()
+            return weighted.sum() / (weights != 0).sum()
     return weighted
 
 
