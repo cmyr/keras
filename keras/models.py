@@ -78,10 +78,12 @@ def weighted_objective(fn):
         weighted = filtered_weights * obj_output
         if mask is None:
             # Instead of calling mean() here, we divide by the sum of filtered_weights.
-            return weighted.sum() / filtered_weights.sum()
+            # return weighted.sum() / filtered_weights.sum()
+            return weighted.sum() / T.eq(weights, 0).astype(‘float32’).sum()
         else:
+            # return weighted.sum() / (weights != 0).sum()
             filtered_mask = mask[weights.nonzero()[:-1]]
-            return weighted.sum() / (weights != 0).sum()
+            (weighted * filtered_mask).sum() / (mask * T.eq(weights, 0).astype(‘float32’)).sum() 
     return weighted
 
 
