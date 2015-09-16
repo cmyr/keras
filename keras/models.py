@@ -457,7 +457,10 @@ class Sequential(Model, containers.Sequential):
                 X_val, y_val, sample_weight_val = validation_data
                 X_val = standardize_X(X_val)
                 y_val = standardize_y(y_val)
-                sample_weight_val = standardize_weights(y_val, sample_weight=sample_weight_val)
+                if isinstance(sample_weight_val, dict):
+                    sample_weight_val = standardize_weights(y_val, class_weight=sample_weight_val)
+                else:
+                    sample_weight_val = standardize_weights(y_val, sample_weight=sample_weight_val)
             else:
                 raise Exception("Invalid format for validation data; provide a tuple (X_val, y_val) or (X_val, y_val, sample_weight). \
                     X_val may be a numpy array or a list of numpy arrays depending on your model input.")
