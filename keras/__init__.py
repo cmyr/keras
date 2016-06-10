@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 from . import backend
+from .backend import device
 from . import datasets
 from . import engine
 from . import layers

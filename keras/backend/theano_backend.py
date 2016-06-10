@@ -1047,3 +1047,26 @@ def random_binomial(shape, p=0.0, dtype=_FLOATX, seed=None):
         seed = np.random.randint(1, 10e6)
     rng = RandomStreams(seed=seed)
     return rng.binomial(shape, p=p, dtype=dtype)
+
+
+# multi-gpu support
+__variable_ref = variable
+
+
+def _make_patch(device):
+    def variable(value, dtype=_FLOATX, name=None):
+        '''Instantiate a tensor variable.
+        '''
+        value = np.asarray(value, dtype=dtype)
+        if theano.config.print_active_device:
+            print('creating variable ', name or '', value.shape, 'on device ', device)
+        return theano.shared(value=value, name=name, strict=False, target=device)
+    return variable
+
+
+@contextlib.contextmanager
+def device(device_name):
+    global variable
+    variable = _make_patch(device_name)
+    yield
+    variable = __variable_ref

@@ -1098,3 +1098,18 @@ def random_binomial(shape, p=0.0, dtype=_FLOATX, seed=None):
         seed = np.random.randint(10e6)
     return tf.select(tf.random_uniform(shape, dtype=dtype, seed=seed) <= p,
                      tf.ones(shape), tf.zeros(shape))
+
+
+# multi-gpu support
+
+def _tf_device_name(device_name):
+    if device_name == 'cpu':
+        return '/cpu:0'
+    elif device_name.startswith('gpu') and device_name[-1].isdigit():
+        return '/gpu:%d' % device_name[-1]
+    else:
+        return device_name
+
+
+def device(device_name):
+    return tf.device(_tf_device_name(device_name))
