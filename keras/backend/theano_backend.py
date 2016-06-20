@@ -8,6 +8,7 @@ try:
 except ImportError:
     from theano.sandbox.softsign import softsign as T_softsign
 import inspect
+import contextlib
 import numpy as np
 from .common import _FLOATX, _EPSILON
 
@@ -16,19 +17,42 @@ from .common import _FLOATX, _EPSILON
 theano.config.floatX = _FLOATX
 _LEARNING_PHASE = T.scalar(dtype='uint8', name='keras_learning_phase')  # 0 = test, 1 = train
 
+__TARGET_DEVICE_KEY = '__TARGET_DEVICE'
+
 
 def learning_phase():
     # False = test, True = train
     return _LEARNING_PHASE
 
 
+@contextlib.contextmanager
+def device(device_name):
+    if theano.config.contexts == '':
+        raise Exception(
+            'targetting a device requires setting the theano context map'
+            'see the Theano docs for more details')
+    setattr(variable, __TARGET_DEVICE_KEY, device_name)
+    yield
+    delattr(variable, __TARGET_DEVICE_KEY)
+
+
 # VARIABLE MANIPULATION
 
-def variable(value, dtype=_FLOATX, name=None):
+def variable(value, dtype=_FLOATX, name=None, target=None):
     '''Instantiate a tensor variable.
     '''
     value = np.asarray(value, dtype=dtype)
-    return theano.shared(value=value, name=name, strict=False)
+    name = name or inspect.stack()[1][3]
+    target_device = getattr(variable, __TARGET_DEVICE_KEY, target)
+    if theano.config.print_active_device:
+        print('creating variable ', name or '', value.shape, 'on device ', target_device)
+    if target_device:
+        var = theano.shared(
+            value=value, name=name, strict=False, target=target_device)
+    else:
+        var = theano.shared(value=value, name=name, strict=False)
+    var._target_device = target_device
+    return var
 
 
 def placeholder(shape=None, ndim=None, dtype=_FLOATX, name=None):
@@ -1047,26 +1071,3 @@ def random_binomial(shape, p=0.0, dtype=_FLOATX, seed=None):
         seed = np.random.randint(1, 10e6)
     rng = RandomStreams(seed=seed)
     return rng.binomial(shape, p=p, dtype=dtype)
-
-
-# multi-gpu support
-__variable_ref = variable
-
-
-def _make_patch(device):
-    def variable(value, dtype=_FLOATX, name=None):
-        '''Instantiate a tensor variable.
-        '''
-        value = np.asarray(value, dtype=dtype)
-        if theano.config.print_active_device:
-            print('creating variable ', name or '', value.shape, 'on device ', device)
-        return theano.shared(value=value, name=name, strict=False, target=device)
-    return variable
-
-
-@contextlib.contextmanager
-def device(device_name):
-    global variable
-    variable = _make_patch(device_name)
-    yield
-    variable = __variable_ref
